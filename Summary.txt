@@ -1,0 +1,1 @@
+This is a collection of implemented algorithms from the book "A Course in Machine Learning" by Hal Daume.
