@@ -1,4 +1,4 @@
-
+import DecisionTree
 D = DecisionTree()
 
 n = D.trainAux([[[False, True], True], [[True, True], False]],[0])
