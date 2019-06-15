@@ -1,15 +1,42 @@
 import DecisionTree
-D = DecisionTree()
 
-n = D.trainAux([[[False, True], True], [[True, True], False]],[0])
-drawTree(n, 0)
+import copy
+
+D = DecisionTree.DecisionTree()
+
+D.train([[[False, True], True], [[True, True], False]],1)
+DecisionTree.drawTree(D.root, 0)
+print([True, False], D.evaluate([True, False]))
+
+D.train([[[False, True], True], [[True, True], False],
+                [[True, False], True], [[False, False], False]],2)
+DecisionTree.drawTree(D.root, 0)
+print([False, True], D.evaluate([False, True]))
+
+D.train([[[False, True], True], [[True, True], False],
+                [[True, False], True], [[False, False], False]], 1)
+DecisionTree.drawTree(D.root, 0)
+print([False, True], D.evaluate([False, True]))
 
 
-n = D.trainAux([[[False, True], True], [[True, True], False],
-                [[True, False], True], [[False, False], False]],[0,1])
-drawTree(n, 0)
 
 
-n = D.trainAux([[[False, True], True], [[True, True], False],
-                [[True, False], True], [[False, False], False]],[0])
-drawTree(n, 0)
+# Some code for generating more tests
+def genA(List, n):
+    if n == 1:
+        return [l + [True] for l in List] + [l + [False] for l in List]
+    return genA([l + [True] for l in List] + [l + [False] for l in List], n-1)
+def parity(blist):
+    p = True
+    for b in blist:
+        p = p != b
+    return p
+def gen(n):
+    L = genA([[]],n)
+    return [[l, parity(l)] for l in L]
+
+n = D.train(gen(4), 4)
+DecisionTree.drawTree(D.root, 0)
+print([False]*4, D.evaluate([False]*4))
+print([True]*4, D.evaluate([True]*4))
+print([False, True]*2, D.evaluate([False, True]*2))

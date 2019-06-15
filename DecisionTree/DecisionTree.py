@@ -2,9 +2,10 @@ class Node:
     """
     A node class for creating a tree.
     """
-    def __init__(self, left=None, right=None):
+    def __init__(self, left=None, right=None, value=None):
         self.left = left
         self.right = right
+        self.value = value
 
     def getLeft(self):
         return self.left
@@ -17,6 +18,12 @@ class Node:
 
     def setRight(self, right):
         self.right = right
+
+    def getValue(self):
+        return self.value
+
+    def setValue(self, value):
+        self.value = value
 
 
 class Leaf:
@@ -37,6 +44,9 @@ class DecisionTree:
     """
     An implementation of a basic decision tree algorithm for binary classification
     of Boolean feature vectors.
+
+    The nodes of the tree store as their value the feature index which they split on.
+    Left subtree corresponds to feature being False; right subtree corresponds to feature being True.
     """
     def __init__(self):
         self.root = None
@@ -54,7 +64,7 @@ class DecisionTree:
         """
         self.numFeatures = numFeatures
         featuresList = list(range(numFeatures)) # A list of all feature indices
-        root = self.trainAux(data, featuresList)
+        self.root = self.trainAux(data, featuresList)
 
     def trainAux(self, data, remainingFeatures):
         """
@@ -102,18 +112,35 @@ class DecisionTree:
 
         subtree.setLeft(self.trainAux(no, remFeatCopy1))
         subtree.setRight(self.trainAux(yes, remFeatCopy2))
-
+        subtree.setValue(maxFeature)
+        
         return subtree
 
-    def evaluate(self, example):
+    def evaluate(self, point):
         """
         Predicts label of data point.
 
-        example: Boolean vector of features.
+        point: Boolean vector of features.
 
-        Returns None.
+        Returns label, the predicted label of parameter "example".
         """
-        pass
+        return self.evaluateAux(point, self.root)
+
+    def evaluateAux(self, point, node):
+        """
+        Predicts label of data point based on subtree rooted at parameter "node".
+
+        point: Boolean vector of features.
+
+        Returns label, the predicted label of parameter "example".
+        """
+        if isinstance(node, Leaf):
+            return node.getValue()
+        else:
+            if point[node.getValue()] == False:
+                return self.evaluateAux(point, node.getLeft())
+            else:
+                return self.evaluateAux(point, node.getRight())
 
     def labelsAllSame(self, data):
         """
@@ -126,16 +153,13 @@ class DecisionTree:
             label:          Boolean:    If all labels are the same, is the value (True/False) of all labels.
                                                 If labels not all same, truth value of most common label
         """
-        if len(data) == 0:
-            return True, None
-        last = None
         length = len(data)
         numTrue = len([d for d in data if d[1] == True])
         numFalse = length - numTrue
         if numTrue == length:
-            return True, True, length
+            return True, True
         elif numFalse == length:
-            return True, False, length
+            return True, False
         else:
             return False, True if numTrue > numFalse else False
 
