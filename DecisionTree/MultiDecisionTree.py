@@ -1,23 +1,13 @@
-class Node:
-    """
-    A node class for creating a tree.
-    """
-    def __init__(self, children=None, value=None):
-        self.children = children
-        self.value = value
+# Example (preformatted) dataset:
+# data = [[[0,2,1], 1], [[2,2,0], 0], [[0,0,1], 1], [[1,0,1], 2], [[2,2,0], 0], [[1,1,1], 1]]
 
-    def getChild(self, index):
-        return self.children[index]
-
-    def setChild(self, child, index):
-        self.children[index] = child
-
-    def getValue(self):
-        return self.value
-
-    def setValue(self, value):
-        self.value = value
-
+# Example (preformatted) dataset generator:
+#       "n" is size of dataset, "c" is number of features,
+#       "catSize" is a list of length "c" where each entry is the
+#            number of categories of the feature it corresponds to,
+#       and "f" is number of features.
+#
+# dataGen = lambda n, c, catSize, f: [[[random.randint(0, catSize[j]-1) for j in range(c)], random.randint(0,f-1)] for i in range(n)]
 
 class Leaf:
     """
@@ -32,6 +22,34 @@ class Leaf:
     def setValue(self, value):
         self.value = value
 
+        
+class Node:
+    """
+    A node class for creating a tree.
+    """
+    def __init__(self, children=None, value=None):
+        self.children = children
+        self.value = value
+
+    def getChildren(self, children):
+        return self.children
+
+    def setChildren(self, children):
+        self.children = children
+
+    def getChild(self, index):
+        return self.children[index]
+
+    def setChild(self, child, index):
+        self.children[index] = child
+
+    def getValue(self):
+        return self.value
+
+    def setValue(self, value):
+        self.value = value
+
+
 
 class MultiDecisionTree:
     """
@@ -41,43 +59,62 @@ class MultiDecisionTree:
     The nodes of the tree store as their value the feature index which they split on.
     The children of each node correspond to the categories of the feature the node splits on.
 
-    self.categoryFunctions is a pair of functions (f1, f2) (passed on training) where f1 indexes
-        a feature of an input point into its category and f2 indexes a label into its category.
-    The self.categorize function is used to convert an input training set into pairs of integer
+    This class expects to be given funtions which convert the arbitrary values of input data into finite-size categories,
+        whose members are represented by a finite prefix of the natural numbers.
+        The expected functions are described below.
+
+    self.featureCategoryFunction is a list of functions, one for each feature (passed to self.train()),
+        where each function indexes feature values into integer category indexes for the feature corresponding to its index.
+    self.labelCategoryFunction is a function which maps label values to their category index.
+    The self.categorizeData() function is used to convert an input training set into pairs of integer
         feature vectors and integer label.
     """
     def __init__(self):
         self.root = None
         self.numFeatures = None
-        self.featureCategories = None
-        self.categoryFunction = None
+        self.featureCategorySizes = None
+        self.featureCategoryFunction = None
+        self.labelCategoryFunction = None
 
-    def train(self, data, numFeatures, featureCategories, categoryFunctions):
+    def train(self, data, numFeatures, featureCategorySizes, labelCategorySize, featureCategoryFunction=None, labelCategoryFunction=None, preformatted=False):
         """
         Trains the decision tree on training data.
         
         data: a list of (point, label) pairs.
             point: vector of features (not in categories).
             label: Integer
-        
+
         numFeatures: an integer storing the number of features
         
-        featureCategories: a tuple containing the size of each category.
+        featureCategorySizes: a list or tuple containing the size of each category.
         
-        categoryFuntions: a tuple of two functions (f1, f2) mapping
-            input feature values to feature category and label to label category respectively
+        labelCategorySize: an integer storing the number of label categories.
+        
+        featureCategoryFuntions: a list of functions, each mapping the values of the
+            input feature corresponding to its index to feature category.
+
+        labelCategoryFunction: a function mapping label values to their category indices.
 
         Returns None.
         """
-        self.featureCategories = featureCategories
-        self.categoryFunctions = categoryFunctions
+        if preformatted == False and not all(featureCategoryFunction, labelCategoryFunction):
+            raise Exception("Not preformatted, and no formatting functions specified!")
+
+        self.featureCategorySizes = featureCategorySizes
+        self.labelCategorySize = labelCategorySize
         self.numFeatures = numFeatures
 
-        processedData = self.categorizeData(data)
-        
         featuresList = list(range(numFeatures)) # A list of all feature indices
+        
+        if preformatted:
+            self.root = self.trainAux(data, featuresList)
+        else:
+            self.featureCategoryFunctions = featureCategoryFunctions
+            self.labelCategoryFunction = labelCategoryFunction
+            processedData = self.categorizeData(data)
+            self.root = self.trainAux(processedData, featuresList)
 
-        self.root = self.trainAux(processedData, featuresList)
+        
 
     def trainAux(self, data, remainingFeatures):
         """
@@ -88,6 +125,7 @@ class MultiDecisionTree:
         data: a list of (point, label) pairs.
             point: Boolean vector of features.
             label: Boolean.
+
         remainingFeatures: A list containing the indices of the features left to test on.
 
         Returns a decision tree for remaining features
@@ -111,7 +149,7 @@ class MultiDecisionTree:
 
         maxFeature = max(scores, key = pi)[0] # Get a (there could be multiple) feature with the maximal score
 
-        yes, no = self.splitOnFeature(data, maxFeature)
+        partitioned = self.splitOnFeature(data, maxFeature)
 
 
         ### Create and return subtree
@@ -119,15 +157,28 @@ class MultiDecisionTree:
         
         subtree = Node()
 
-        # Makes two (2) copies of remainingFeatures, expect takes out the current feature, one for each recursive call
-        remFeatCopy1 = [f for f in remainingFeatures if f != maxFeature]
-        remFeatCopy2 = [f for f in remainingFeatures if f != maxFeature]
+        # For each category in corresponding to maxFeature, makes a new list of remaining features.
+        # Each list is identical, though they are non-linked copies.
+        # They all consist of "remainingFeatures" minus the value of maxFeature.
+        copies = []
+        for i in range(self.featureCategorySizes[maxFeature]):
+            copies.append([f for f in remainingFeatures if f != maxFeature])
 
-        subtree.setLeft(self.trainAux(no, remFeatCopy1))
-        subtree.setRight(self.trainAux(yes, remFeatCopy2))
+        subtree.setChildren([self.trainAux(p, copy) for (p, copy) in zip(partitioned, copies)])
         subtree.setValue(maxFeature)
         
         return subtree
+
+    
+    def categorizePoint(self, point):
+        """
+        Converts a point from domain into an integer feature vector
+
+        point: a feature vector.
+        
+        Returns the formatted vector.
+        """
+        return [self.featureCategoryFunctions[i](point[i]) for i in range(numFeatures)]
 
     def categorizeData(self, data):
         """
@@ -137,7 +188,8 @@ class MultiDecisionTree:
 
         Returns the formatted data.
         """
-        pass
+        return tuple([(self.categorizePoint(d[0]), self.labelCategoryFunction(d[1]))] for d in data)
+    
     def evaluate(self, point):
         """
         Predicts label of data point.
@@ -159,31 +211,38 @@ class MultiDecisionTree:
         if isinstance(node, Leaf):
             return node.getValue()
         else:
-            if point[node.getValue()] == False:
-                return self.evaluateAux(point, node.getLeft())
-            else:
-                return self.evaluateAux(point, node.getRight())
+            featureIndex = node.getValue()
+            return self.evaluateAux(node.getChild(featureIndex))
 
     def labelsAllSame(self, data):
         """
         Determines whether labels of a subset of data all agree.
+        Assumes data has been pre-processed by self.categorizeData().
 
         data: the list of data being tested.
 
         Returns a tuple (allSame, label).
             allSame:        Boolean:    True if all labels are the same, false otherwise.
-            label:          Boolean:    If all labels are the same, is the value (True/False) of all labels.
-                                                If labels not all same, truth value of most common label
+            label:          Int: category index of most common label, regardless of whether all labels of the same.
+                                    Defaults to first category (value of zero) in case where "data" is empty.
         """
-        length = len(data)
-        numTrue = len([d for d in data if d[1] == True])
-        numFalse = length - numTrue
-        if numTrue == length:
-            return True, True
-        elif numFalse == length:
-            return True, False
+        if len(data) == 0:
+            return True, 0
+        partitioned = self.splitOnLabel(data)
+
+        numEachLabel = [len(p) for p in partitioned]
+
+        maxNum = max(numEachLabel)
+        maxInd = numEachLabel.index(maxNum)
+
+        numNonzero = [n for n in numEachLabel if n > 0]
+        
+        if len(numNonzero) == 1:
+            return True, maxInd
+        elif len(numNonzero) > 1:
+            return False, maxInd
         else:
-            return False, True if numTrue > numFalse else False
+            raise Exception("Shouldn't get here")
 
     def featureAccuracy(self, data, feature):
         """
@@ -195,27 +254,54 @@ class MultiDecisionTree:
 
         Returns a float representing the proportion of examples that are classified correctly by the current feature.
         """
-        # Subset of features where given feature is "no"
-        no = [d for d in data if d[0][feature] == False]
-        # Subset of features where given feature is "no"
-        yes = [d for d in data if d[0][feature] == True]
-        lenNo = len(no); lenYes = len(yes)
-        # Number of "True" labels in "no" set and "yes set respectively
-        numPredictedByNo = len([d for d in no if d[1] == True])
-        numPredictedByYes = len([d for d in yes if d[1] == True])
         
-        return float(max(numPredictedByNo, lenNo - numPredictedByNo) + max(numPredictedByYes, lenYes - numPredictedByYes)) / float(lenNo + lenYes)
+        partitioned = self.splitOnFeature(data, feature)
+        # Get the number that would be correctly predicted (by simple majority "vote") for each element of the partition
+        numPredictedInEachCategory = [self.numMajorityLabel(p) for p in partitioned]
+        accuracy = sum(numPredictedInEachCategory)
+        return float(accuracy)/float(len(data))
 
+    def numMajorityLabel(self, data):
+        """
+        For a given list/tuple of data, finds the maximum number of data points that belong to any one label.
+            Alternatively, can be stated as: for each possible label, find the number of elements in "data" with that label.
+            Then, return the maximum of these numbers.
+        Assumes data has been pre-processed by self.categorizeData().
+
+        data: a list or tuple of (feature, label) pairs.
+
+        Returns: An integer; the number of data points in the label category with the most data points.
+        """
+        numberInEachCategory = [len([d for d in data if d[1] == i]) for i in range(self.labelCategorySize)]
+        return max(numberInEachCategory)
+            
     def splitOnFeature(self, data, feature):
         """
-        Splits the data into two sets based on whether the value of their feature indicated by the parameter "feature" is True or False.
+        Partitions data on feature category.
+        Assumes data has been pre-processed by self.categorizeData().
 
-        data: a list of data to split.
-        feature: the particular feature to split on.
+        data: a list or tuple of data to split.
+        
+        feature: the index of the particular feature to split on.
 
-        Returns a tuple (yes, no) which are lists of the subsets of data such that the value of "feature" is yes/no respectively.
+        Returns a tuple of data (d1, d2, ..., dn) where "di" is a tuple containing
+            the subset of "data" belonging to category "i" of feature.
         """
-        return [d for d in data if d[0][feature] == True], [d for d in data if d[0][feature] == False]
+        return tuple([tuple([d for d in data if d[0][feature] == i]) for i in range(self.featureCategorySizes[feature])])
+    
+    def splitOnLabel(self, data):
+        """
+        Partitions data on feature category.
+        Assumes data has been pre-processed by self.categorizeData().
+
+        data: a list or tuple of data to split.
+        
+        feature: the index of the particular feature to split on.
+
+        Returns a tuple of data (d1, d2, ..., dn) where "di" is a tuple containing
+            the subset of "data" belonging to category "i" of feature.
+        """
+        return tuple([tuple([d for d in data if d[1] == i]) for i in range(self.labelCategorySize)])
 
 def drawTree(node, depth):
     """
@@ -224,7 +310,7 @@ def drawTree(node, depth):
     if isinstance(node, Leaf):
         print("   "*depth + str(node.getValue()))
     else:
-        drawTree(node.getLeft(), depth + 1)
-        print("   "*depth + "/")
-        print("   "*depth + "\\")
-        drawTree(node.getRight(), depth + 1)
+        for i in range(len(node.children)):
+            print("---"*depth)
+            drawTree(node.getChild(i), depth + 1)
+        print("---"*depth)
