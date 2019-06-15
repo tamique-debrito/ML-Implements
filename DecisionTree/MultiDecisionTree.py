@@ -5,9 +5,24 @@
 #       "n" is size of dataset, "c" is number of features,
 #       "catSize" is a list of length "c" where each entry is the
 #            number of categories of the feature it corresponds to,
-#       and "f" is number of features.
+#       and "l" is size of label category.
 #
-# dataGen = lambda n, c, catSize, f: [[[random.randint(0, catSize[j]-1) for j in range(c)], random.randint(0,f-1)] for i in range(n)]
+# dataGen = lambda n, c, catSize, l: [[[random.randint(0, catSize[j]-1) for j in range(c)], random.randint(0,l-1)] for i in range(n)]
+
+"""
+# A test:
+
+import random
+dataGen = lambda n, c, catSize, l: [[[random.randint(0, catSize[j]-1) for j in range(c)], random.randint(0,l-1)] for i in range(n)]
+MDT = MultiDecisionTree()
+data = dataGen(400, 4, [3,2,5,2], 4)
+MDT.train(data, 4, [3,2,5,2], 4, preformatted=True)
+drawTree(MDT.root, 0)
+
+# In one line, for convenience:
+
+import random; dataGen = lambda n, c, catSize, l: [[[random.randint(0, catSize[j]-1) for j in range(c)], random.randint(0,l-1)] for i in range(n)];MDT = MultiDecisionTree();data = dataGen(400, 4, [3,2,5,2], 4);MDT.train(data, 4, [3,2,5,2], 4, preformatted=True);drawTree(MDT.root, 0)
+"""
 
 class Leaf:
     """
@@ -61,6 +76,7 @@ class MultiDecisionTree:
 
     This class expects to be given funtions which convert the arbitrary values of input data into finite-size categories,
         whose members are represented by a finite prefix of the natural numbers.
+        However, it is possible to preformat data into the correct format (described below) and pass "preformatted=True" on training.
         The expected functions are described below.
 
     self.featureCategoryFunction is a list of functions, one for each feature (passed to self.train()),
@@ -190,7 +206,7 @@ class MultiDecisionTree:
         """
         return tuple([(self.categorizePoint(d[0]), self.labelCategoryFunction(d[1]))] for d in data)
     
-    def evaluate(self, point):
+    def evaluate(self, point, preformatted=False):
         """
         Predicts label of data point.
 
@@ -198,7 +214,10 @@ class MultiDecisionTree:
 
         Returns label, the predicted label of parameter "example".
         """
-        return self.evaluateAux(point, self.root)
+        if preformatted:
+            return self.evaluateAux(point, self.root)
+        else:
+            return self.evaluateAux(self.categorizePoint(point), self.root)
 
     def evaluateAux(self, point, node):
         """
@@ -212,7 +231,7 @@ class MultiDecisionTree:
             return node.getValue()
         else:
             featureIndex = node.getValue()
-            return self.evaluateAux(node.getChild(featureIndex))
+            return self.evaluateAux(point, node.getChild(point[featureIndex]))
 
     def labelsAllSame(self, data):
         """
@@ -308,9 +327,9 @@ def drawTree(node, depth):
     A quick function to draw trees
     """
     if isinstance(node, Leaf):
-        print("   "*depth + str(node.getValue()))
+        print("    "*depth + str(node.getValue()))
     else:
+        print("    "*depth + "N:" + str(node.getValue()))
         for i in range(len(node.children)):
-            print("---"*depth)
+            print("   "*depth + "----")
             drawTree(node.getChild(i), depth + 1)
-        print("---"*depth)
