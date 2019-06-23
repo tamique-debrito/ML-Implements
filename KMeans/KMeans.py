@@ -1,3 +1,6 @@
+# Created by Tamique de Brito.
+# Updated 22 June, 2019
+
 import numpy
 import copy
 import random
@@ -16,6 +19,28 @@ import numpy; import random; KM = KMeans(); data = numpy.array([[random.gauss(-1
 
 
 """
+
+
+
+"""
+Another test:
+    
+
+
+import numpy; import random
+clusterGen = lambda n, p, sd: [[random.gauss(p[0],sd), random.gauss(p[1],sd)] for i in range(n)]
+KM = KMeans()
+data = numpy.array(clusterGen(6,[1,4],0.1) + clusterGen(20, [-4,-7], 0.3)+ clusterGen(30, [5,7],0.4) + clusterGen(30,[3,-8],1))
+KM.train(data, 10, 50, 0.1)
+for i in range(len(KM.means)):
+    c = KM.getCluster(i)
+    x = [p[0] for p in c]; y = [p[1] for p in c]
+    plt.plot(x,y,'.C'+str(i), alpha=0.5, markersize=7)
+    plt.plot(KM.means[i][0],KM.means[i][1],'sC'+str(i), alpha=1.0, markersize=8)
+"""
+
+
+
 
 class KMeans:
     """
@@ -76,7 +101,8 @@ class KMeans:
             maxDisplacement = max(maxDisplacement, numpy.linalg.norm(currentMean - self.means[i]))
             self.means[i] = currentMean
         self.converged = maxDisplacement < self.displacementMinLimit
-    def evaluate(self, point):
+        
+    def predict(self, point):
         """
         Same as self.closestMean, but with the semantics of classifying a new point.
         """
@@ -90,8 +116,7 @@ class KMeans:
 
         Returns the component-wise average of the points that are assigned to cluster.
         """
-        assignedToCluster = [x[0] for x in self.clusteredData if x[1] == cluster]
-        return numpy.mean(assignedToCluster, axis=0)
+        return numpy.mean(self.getCluster(cluster), axis=0)
     
     def closestMean(self, point):
         """
@@ -110,3 +135,13 @@ class KMeans:
             if all(self.means[i] == minMean):
                 return i
 
+    def getCluster(self, cluster):
+        """
+        Gets all points in self.clusteredData which are part of
+            a specified cluster.
+            
+        cluster: the cluster index to find members of.
+        
+        Returns a list of all points in the specified cluster.
+        """
+        return [x[0] for x in self.clusteredData if x[1] == cluster]

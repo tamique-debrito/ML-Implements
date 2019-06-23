@@ -206,7 +206,7 @@ class MultiDecisionTree:
         """
         return tuple([(self.categorizePoint(d[0]), self.labelCategoryFunction(d[1]))] for d in data)
     
-    def evaluate(self, point, preformatted=False):
+    def predict(self, point, preformatted=False):
         """
         Predicts label of data point.
 
@@ -215,11 +215,11 @@ class MultiDecisionTree:
         Returns label, the predicted label of parameter "example".
         """
         if preformatted:
-            return self.evaluateAux(point, self.root)
+            return self.predictAux(point, self.root)
         else:
-            return self.evaluateAux(self.categorizePoint(point), self.root)
+            return self.predictAux(self.categorizePoint(point), self.root)
 
-    def evaluateAux(self, point, node):
+    def predictAux(self, point, node):
         """
         Predicts label of data point based on subtree rooted at parameter "node".
 
@@ -231,7 +231,7 @@ class MultiDecisionTree:
             return node.getValue()
         else:
             featureIndex = node.getValue()
-            return self.evaluateAux(point, node.getChild(point[featureIndex]))
+            return self.predictAux(point, node.getChild(point[featureIndex]))
 
     def labelsAllSame(self, data):
         """

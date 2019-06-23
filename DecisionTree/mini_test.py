@@ -6,17 +6,17 @@ D = DecisionTree.DecisionTree()
 
 D.train([[[False, True], True], [[True, True], False]],1)
 DecisionTree.drawTree(D.root, 0)
-print([True, False], D.evaluate([True, False]))
+print([True, False], D.predict([True, False]))
 
 D.train([[[False, True], True], [[True, True], False],
                 [[True, False], True], [[False, False], False]],2)
 DecisionTree.drawTree(D.root, 0)
-print([False, True], D.evaluate([False, True]))
+print([False, True], D.predict([False, True]))
 
 D.train([[[False, True], True], [[True, True], False],
                 [[True, False], True], [[False, False], False]], 1)
 DecisionTree.drawTree(D.root, 0)
-print([False, True], D.evaluate([False, True]))
+print([False, True], D.predict([False, True]))
 
 
 
@@ -37,6 +37,6 @@ def gen(n):
 
 n = D.train(gen(4), 4)
 DecisionTree.drawTree(D.root, 0)
-print([False]*4, D.evaluate([False]*4))
-print([True]*4, D.evaluate([True]*4))
-print([False, True]*2, D.evaluate([False, True]*2))
+print([False]*4, D.predict([False]*4))
+print([True]*4, D.predict([True]*4))
+print([False, True]*2, D.predict([False, True]*2))

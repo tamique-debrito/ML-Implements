@@ -1,3 +1,6 @@
+# Created by Tamique de Brito.
+# Updated 22 June, 2019
+
 class Node:
     """
     A node class for creating a tree.
@@ -116,7 +119,7 @@ class DecisionTree:
         
         return subtree
 
-    def evaluate(self, point):
+    def predict(self, point):
         """
         Predicts label of data point.
 
@@ -124,9 +127,9 @@ class DecisionTree:
 
         Returns label, the predicted label of parameter "example".
         """
-        return self.evaluateAux(point, self.root)
+        return self.predictAux(point, self.root)
 
-    def evaluateAux(self, point, node):
+    def predictAux(self, point, node):
         """
         Predicts label of data point based on subtree rooted at parameter "node".
 
@@ -138,9 +141,9 @@ class DecisionTree:
             return node.getValue()
         else:
             if point[node.getValue()] == False:
-                return self.evaluateAux(point, node.getLeft())
+                return self.predictAux(point, node.getLeft())
             else:
-                return self.evaluateAux(point, node.getRight())
+                return self.predictAux(point, node.getRight())
 
     def labelsAllSame(self, data):
         """
