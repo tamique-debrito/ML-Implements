@@ -1,3 +1,6 @@
+# Created by Tamique de Brito.
+# Updated 2 July, 2019
+
 import csv
 
 # returns a pair (data, names) where

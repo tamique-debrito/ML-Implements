@@ -1,5 +1,5 @@
 # Created by Tamique de Brito.
-# Updated 25 June, 2019
+# Updated 2 July, 2019
 
 # Example (preformatted) dataset:
 # data = [[[0,2,1], 1], [[2,2,0], 0], [[0,0,1], 1], [[1,0,1], 2], [[2,2,0], 0], [[1,1,1], 1]]
@@ -95,7 +95,7 @@ class MultiDecisionTree:
         self.featureCategoryFunction = None
         self.labelCategoryFunction = None
 
-    def train(self, data, numFeatures, featureCategorySizes, labelCategorySize, featureCategoryFunction=None, labelCategoryFunction=None, preformatted=False):
+    def train(self, data, numFeatures, featureCategorySizes, labelCategorySize, featureCategoryFunction=None, labelCategoryFunction=None, preformatted=True):
         """
         Trains the decision tree on training data.
         
@@ -116,7 +116,7 @@ class MultiDecisionTree:
 
         Returns None.
         """
-        if preformatted == False and not all(featureCategoryFunction, labelCategoryFunction):
+        if preformatted == False and not all([featureCategoryFunction, labelCategoryFunction]):
             raise Exception("Not preformatted, and no formatting functions specified!")
 
         self.featureCategorySizes = featureCategorySizes
@@ -128,7 +128,7 @@ class MultiDecisionTree:
         if preformatted:
             self.root = self.trainAux(data, featuresList)
         else:
-            self.featureCategoryFunctions = featureCategoryFunctions
+            self.featureCategoryFunction = featureCategoryFunction
             self.labelCategoryFunction = labelCategoryFunction
             processedData = self.categorizeData(data)
             self.root = self.trainAux(processedData, featuresList)
@@ -209,7 +209,7 @@ class MultiDecisionTree:
         """
         return tuple([(self.categorizePoint(d[0]), self.labelCategoryFunction(d[1]))] for d in data)
     
-    def predict(self, point, preformatted=False):
+    def predict(self, point, preformatted=True):
         """
         Predicts label of data point.
 
