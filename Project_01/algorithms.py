@@ -1,6 +1,13 @@
 # Created by Tamique de Brito.
 # Updated 2 July, 2019
 
+##########
+#
+# Note: this has been sloppily written so that most of the code that is currently commented
+#       does not work anymore due to changes in parts that they relied on.
+#
+##########
+
 import copy
 import data_opener
 import math
@@ -23,7 +30,7 @@ random.shuffle(mainData)
 # Data labels
 #print(names)
 
-trainData = mainData[0:500]
+trainData = mainData[0:500] 
 testData = mainData[500:]
 
 
@@ -59,11 +66,11 @@ def plotData(data, names):
 
 """
 # Plot label histogram
-valuesByFeature, labelValues = data_opener.transpose(aawData)
+valuesByFeature, labelValues = data_opener.transpose(mainData)
 fig2 = plt.figure()
 fig2.add_subplot(1,2,1)
-fig2.set_size_inches(10, 5)
-plt.hist(labelValues)
+fig2.set_size_inches(20, 5)
+plt.hist(labelValues, bins=50)
 plt.xlabel('Hours')
 plt.ylabel('Number')
 plt.title('Time Absent (Lin Scale)')
@@ -79,9 +86,35 @@ plt.title('Time Absent (Log Scale)')
 Error calculator
 """
 
-classificationPercentError = lambda testData, predictor: float(len([None for example in testData if predictor.predict(example[0]) != example[1]]))/float(len(testData))
+def classificationPercentError(testData, predictor, isFunc = False):
+    numCorrect = 0
+    numIncorrect = 0
+    if isFunc:
+        for example in testData:
+            if predictor(example[0]) == example[1]:
+                numCorrect += 1
+            else:
+                numIncorrect += 1
+        return float(numIncorrect)/float(numCorrect + numIncorrect)*100
+    else:
+        for example in testData:
+            if predictor.predict(example[0]) == example[1]:
+                numCorrect += 1
+            else:
+                numIncorrect += 1
+        return float(numIncorrect)/float(numCorrect + numIncorrect)*100
 
-
+def classificationAvgLoss(testData, predictor, isFunc = False):
+    n = len(testData)
+    lossSum = 0
+    if isFunc:
+        for example in testData:
+            lossSum += abs(predictor(example[0]) - example[1])
+        return float(lossSum) / float(n)
+    else:
+        for example in testData:
+            lossSum += abs(predictor.predict(example[0]) - example[1])
+        return float(lossSum) / float(n)
 
 
 
@@ -110,7 +143,7 @@ def categorizeLabels(data, cutoffs):
     return [[example[0], categorizeValue(example[1], cutoffs)] for example in data]
 def categorizeData(data, cutoffsList):
     return [[[categorizeValue(featureVal, cutoffs) for featureVal, cutoffs in zip(example[0], cutoffsList[0])], categorizeValue(example[1], cutoffsList[1])] for example in data]
-aawDataBinaryCutoffs = [[None, 22, 7, 5, 2.5, 250, 35, 15, 40, 275, 90, 0.5, 2.5, 3, 0.5, 0.5, 3, 85, 175, 30], 5] #applies to data with "ID" and "Hit Target" features removed
+aawDataBinaryCutoffs = [[None, 22, 7, 5, 2.5, 250, 35, 15, 40, 275, 90, 0.5, 2.5, 3, 0.5, 0.5, 3, 85, 175, 30], 3] #applies to data with "ID" and "Hit Target" features removed
 
 
 aawDataBinary = categorizeBinary(trainData, aawDataBinaryCutoffs)
@@ -222,35 +255,80 @@ Try Multi-Decision Tree
 """
 
 """
-removedFeatures = [0, 1, 3]
+remove = [0,3,10,16,5]
 
 labelCutoffs = [1,2,3,4,5,6,7,10]
 
-aawDataCutoffs = [[[1], [22], [1,2,3,4,5,6,7,8,9,10,11], [1,2,3,4,5,6,7], 
+aawDataCutoffs = [[[1], [i for i in range(31)], [i for i in range(12)], [i for i in range(7)], 
                    [1,2,3,4], [100,150,200,300], [10,15,20,40], [5,10,20], [20,30,40,50],
                    [250,300,350], [90,95], [0.5], [1,2,3], [0,1,2,3,4], 
                    [0.5], [0.5], [0,1,2,4,6], [70,80,90,100], [170,180,190],[22,29,35]],
                     labelCutoffs]
-aawDataCutoffs_f = [[copy.deepcopy(aawDataCutoffs[0][i]) for i in range(len(aawDataCutoffs[0])) if not i in removedFeatures], copy.deepcopy(aawDataCutoffs[1])]
-
+removeCutoffs = lambda cutoffs, remove:[[copy.deepcopy(cutoffs[0][i]) for i in range(len(cutoffs[0])) if not i in remove], copy.deepcopy(cutoffs[1])]
 aawTrainData = categorizeData(trainData, aawDataCutoffs)
-aawTrainData, names = data_opener.removeFeatures(aawTrainData, names, removedFeatures)
+#aawTrainData, names = data_opener.removeFeatures(aawTrainData, names, removedFeatures)
 aawTestData = categorizeData(testData, aawDataCutoffs)
-aawTestData, _ = data_opener.removeFeatures(aawTestData, names, removedFeatures)
-
-
+#aawTestData, _ = data_opener.removeFeatures(aawTestData, names, removedFeatures)
 
 MT = MultiDecisionTree.MultiDecisionTree()
-MT.train(aawTestData, len(aawDataCutoffs_f[0]), map(lambda x: len(x) + 1, aawDataCutoffs_f[0]), len(aawDataCutoffs[1]) + 1, preformatted=True)
-print("Multi Decision Tree Error: " + str(classificationPercentError(aawTestData, MT)) + "%")
 
+numTrials = 50
+errorList = []
+errorSum = 0
+for i in range(numTrials):
+    remove = random.sample([i for i in range(20)], random.randint(0,20))
+    aawDataCutoffs_mod = removeCutoffs(aawDataCutoffs, remove)
+    random.shuffle(mainData)
+    aawTrainData = mainData[:500]
+    aawTestData = mainData[500:]
+    aawTrainData_mod = categorizeData(aawTrainData, aawDataCutoffs)
+    aawTestData_mod = categorizeData(aawTestData, aawDataCutoffs)
+    aawTrainData_mod, names = data_opener.removeFeatures(aawTrainData_mod, featureNames, remove)
+    aawTestData_mod, _ = data_opener.removeFeatures(aawTestData_mod, featureNames, remove)
+    MT.train(aawTrainData_mod, len(aawDataCutoffs_mod[0]), map(lambda x: len(x) + 1, aawDataCutoffs_mod[0]), len(aawDataCutoffs_mod[1]) + 1)
+    error = classificationPercentError(aawTestData_mod, MT)
+    errorList.append((remove, error))
+    errorSum += error
+averageError = errorSum / float(numTrials)
+
+print("Multi Decision Tree Error: " + str(averageError) + "%")
+
+def avgError(remove, numTrials, mainData, cutoffs, cutoffs_mod):
+    
+    MT = MultiDecisionTree.MultiDecisionTree()
+    errorSum = 0
+    for i in range(numTrials):
+        random.shuffle(mainData)
+        _trainData = mainData[500:]
+        _testData = mainData[:500]
+        _trainData_mod = categorizeData(_trainData, cutoffs)
+        _testData_mod = categorizeData(_testData, cutoffs)
+        _trainData_mod, names = data_opener.removeFeatures(_trainData_mod, featureNames, remove)
+        _testData_mod, _ = data_opener.removeFeatures(_testData_mod, featureNames, remove)
+        MT.train(_trainData_mod, len(cutoffs_mod[0]), map(lambda x: len(x) + 1, cutoffs_mod[0]), len(cutoffs_mod[1]) + 1)
+        error = classificationPercentError(_testData_mod, MT)
+        errorSum += error
+    return errorSum/float(numTrials)
+
+errorList2 = []
+
+pi = lambda x: x[1]
+
+errorList.sort(key=pi)
+
+candidates = [e[0] for e in errorList[:20]] #Take the 20 best feature-removals
+print([e[1] for e in errorList[:10]]) # To get an idea of the range of errors
+
+for c in candidates:
+    errorList2.append((c, avgError(c,20,mainData,aawDataCutoffs,removeCutoffs(aawDataCutoffs, c))))
+print(errorList2)
 labelCount = lambda data, labels: [len([False for d in data if d[1] == l]) for l in labels]
 predict = lambda data, predictor: [[d[0], predictor.predict(d[0])] for d in data]
 
 
 fig, ax = plt.subplots()
-rects1 = ax.bar([i + 0.3 for i in labelCutoffs], labelCount(aawTestData, labelCutoffs), width=0.2, label='actual')
-rects2 = ax.bar(labelCutoffs, labelCount(predict(aawTestData, MT), labelCutoffs), width=0.2, label='predicted')
+rects1 = ax.bar([i + 0.3 for i in labelCutoffs], labelCount(aawTestData_mod, labelCutoffs), width=0.2, label='actual')
+rects2 = ax.bar(labelCutoffs, labelCount(predict(aawTestData_mod, MT), labelCutoffs), width=0.2, label='predicted')
 ax.set_title("Multi Decision Tree: \nactual distribution of test data labels \nvs distribution of predicted data labels")
 
 ax.legend()
@@ -269,19 +347,101 @@ plt.show()
 
 
 
-
-
-
-
 """
 Try K-Nearest-Neighbors
 """
 
+trainData_1, _ = data_opener.removeFeatures(trainData, featureNames, [0,1,3])
+testData_1, _ = data_opener.removeFeatures(testData, featureNames, [0, 1, 3])
+
 K = KNearestNeighbors.KNearestNeighbors()
 
-K.setData(aawDataBinary, 2, 2)
+K.setData(trainData_1, None, 30)
 
-print("K-Nearest Neighbors Error: " + str(classificationPercentError(testDataBinary, K)) + "%")
+print("K-Nearest Neighbors (weighted averaging) Average Error (Hours): " + str(classificationAvgLoss(testData_1, K.predict_averageLabels, isFunc=True)))
+
+
+remove = [0,3,10,16,5]
+
+labelCutoffs = [1,2,3,4,5,6,7,10]
+
+aawDataCutoffs = [[[1], [i for i in range(31)], [i for i in range(12)], [i for i in range(7)], 
+                   [1,2,3,4], [100,150,200,300], [10,15,20,40], [5,10,20], [20,30,40,50],
+                   [250,300,350], [90,95], [0.5], [1,2,3], [0,1,2,3,4], 
+                   [0.5], [0.5], [0,1,2,4,6], [70,80,90,100], [170,180,190],[22,29,35]],
+                    labelCutoffs]
+aawTrainData = mainData[:500]
+aawTestData = mainData[500:]
+aawTrainData_mod = categorizeData(aawTrainData, aawDataCutoffs)
+aawTestData_mod = categorizeData(aawTestData, aawDataCutoffs)
+aawTrainData_mod, names = data_opener.removeFeatures(aawTrainData_mod, featureNames, remove)
+aawTestData_mod, _ = data_opener.removeFeatures(aawTestData_mod, featureNames, remove)
+
+K.setData(aawTrainData_mod, len(labelCutoffs) + 1, 30)
+
+print("K-Nearest Neighbors (normal) Average Error: " + str(classificationPercentError(aawTestData_mod, K)) + "%")
+
+
+
+# Plot: loss vs K
+
+numTrials = 100
+
+accuracySeq = []
+kSeq = []
+for k in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 17, 20, 30, 40, 50]:
+    errorSum = 0
+    for i in range(numTrials):
+        random.shuffle(mainData)
+        trainData = mainData[:500]
+        testData = mainData[500:]
+        trainData_1, _ = data_opener.removeFeatures(trainData, featureNames, [0,1,3])
+        testData_1, _ = data_opener.removeFeatures(testData, featureNames, [0, 1, 3])
+        
+        K.setData(trainData_1, len(labelCutoffs) + 1, k)
+        errorSum += classificationAvgLoss(testData_1, K.predict_averageLabels, isFunc=True)
+    avgError = float(errorSum) / float(numTrials)
+    kSeq.append(k)
+    accuracySeq.append(avgError)
+
+plt.plot(kSeq, accuracySeq)
+plt.legend()
+plt.title("Error vs K (average)")
+plt.xlabel("Cutoff (Hours)", fontsize = 14)
+plt.ylabel("Error", fontsize = 14)
+plt.show()
+
+# Plot: error vs K
+
+numTrials = 50
+
+accuracySeq = []
+kSeq = []
+for k in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 17, 20, 30, 40, 50]:
+    errorSum = 0
+    for i in range(numTrials):
+        random.shuffle(mainData)
+        aawTrainData = mainData[:500]
+        aawTestData = mainData[500:]
+        aawTrainData_mod = categorizeData(aawTrainData, aawDataCutoffs)
+        aawTestData_mod = categorizeData(aawTestData, aawDataCutoffs)
+        aawTrainData_mod, names = data_opener.removeFeatures(aawTrainData_mod, featureNames, remove)
+        aawTestData_mod, _ = data_opener.removeFeatures(aawTestData_mod, featureNames, remove)
+        
+        K.setData(aawTrainData_mod, len(labelCutoffs) + 1, k)
+        errorSum += classificationPercentError(aawTestData_mod, K)
+    avgError = float(errorSum) / float(numTrials)
+    kSeq.append(k)
+    accuracySeq.append(avgError)
+
+plt.plot(kSeq, accuracySeq)
+plt.legend()
+plt.title("Error vs K (categorized)")
+plt.xlabel("Cutoff (Hours)", fontsize = 14)
+plt.ylabel("Error", fontsize = 14)
+plt.show()
+
+
 
 # Plot: error vs categorization cutoff and K
 """
@@ -303,7 +463,6 @@ ax.set_ylabel("K", fontsize = 14)
 ax.set_title("Accuracy vs cutoff and K (larger dots = more accurate)", fontsize = 18)
 plt.show()
 """
-
 
 # Plot: error vs categorization cutoff
 """
@@ -387,9 +546,3 @@ P = Perceptron.Perceptron()
 P.train(np.array(aawTrainDataBinLabels), 50, len(aawTrainDataBinLabels[0][0]))
 
 print("Perceptron Error: " + str(classificationPercentError(aawTestDataBinLabels, P)) + "%")
-
-
-AP = AveragedPerceptron.AveragedPerceptron()
-AP.train(np.array(aawTrainDataBinLabels), 50, len(aawTrainDataBinLabels[0][0]))
-
-print("Averaged Perceptron Error: " + str(classificationPercentError(aawTestDataBinLabels, AP)) + "%")

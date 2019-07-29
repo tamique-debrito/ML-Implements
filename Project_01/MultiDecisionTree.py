@@ -197,7 +197,7 @@ class MultiDecisionTree:
         
         Returns the formatted vector.
         """
-        return [self.featureCategoryFunctions[i](point[i]) for i in range(numFeatures)]
+        return [self.featureCategoryFunctions[i](point[i]) for i in range(self.numFeatures)]
 
     def categorizeData(self, data):
         """
