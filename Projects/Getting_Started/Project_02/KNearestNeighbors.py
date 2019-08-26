@@ -85,12 +85,12 @@ class KNearestNeighbors:
             return votes.index(max(votes))
     def predict_averageLabels(self, point):
         """
-        Computes the predicted class of the point.
+        Computes the average label for the k nearest neighbors.
 
         point: a list of floats representing a Euclidean feature vector to be classified.
         labelsAverage: for numerical labels: whether to compute a weighted average for prediction
         
-        Returns the number of the predicted label for the point.
+        Returns the averaged label.
         """
         distance_to_point = lambda p: self.dist(point, p[0])
         # Get K-nearest neigbors
@@ -99,3 +99,21 @@ class KNearestNeighbors:
         for n in k_nearest:
             voteSum += n[1]
         return float(voteSum)/float(self.K)
+    def predict_averageLabels_rescale(self, point):
+        """
+        Computes the average label for the k nearest neighbors.
+
+        point: a list of floats representing a Euclidean feature vector to be classified.
+        labelsAverage: for numerical labels: whether to compute a weighted average for prediction
+        
+        Returns the averaged label.
+        """
+        distance_to_point = lambda p: self.dist(point, p[0])
+        # Get K-nearest neigbors
+        k_nearest = heapq.nsmallest(self.K, self.data, key=distance_to_point)
+        voteSum = 0
+        for n in k_nearest:
+            if n[0][-1] != 0:
+                voteSum += n[1] * point[-1] / n[0][-1]
+        return float(voteSum)/float(self.K)
+
