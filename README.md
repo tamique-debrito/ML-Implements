@@ -4,6 +4,7 @@ A place I store/document:
 	Projects using these implementations.
 
 Done so far:
-  Decision tree: basic (binary) decision tree and multi-decision tree.
-  K-Nearest-Neighbor: basic implementation of K-Nearest-Neighbor.
-  K-Means: basic implementation of K-Means.
+  Decision tree - binary decision tree and multi-decision tree.
+  K-Nearest-Neighbor
+  K-Means
+  Perceptron/linear regression via gradient descent
